@@ -113,6 +113,112 @@ class SenseVoiceClient:
             logger.error(f"音频预处理失败: {str(e)}")
             raise
     
+    async def transcribe_audio_stream(
+        self,
+        file_path: Path,
+        keywords: Optional[str] = None,
+        language: str = "auto",
+        chunk_duration: float = 30.0
+    ):
+        """流式转录音频文件
+        
+        Args:
+            file_path: 音频文件路径
+            keywords: 关键词，用逗号分隔（暂不支持）
+            language: 语言代码 (auto, zh, en, ja, ko等)
+            chunk_duration: 每个音频块的时长（秒）
+            
+        Yields:
+            转录结果字典
+        """
+        try:
+            if self.model is None:
+                raise Exception("模型未初始化")
+            
+            # 加载和预处理音频
+            logger.info(f"开始流式转录音频文件: {file_path.name}")
+            audio = self._load_audio(file_path)
+            audio = self._preprocess_audio(audio)
+            
+            # 设置语言参数
+            lang_map = {
+                "auto": "auto",
+                "zh": "zh",
+                "zh-CN": "zh",
+                "en": "en", 
+                "ja": "ja",
+                "ko": "ko",
+                "yue": "yue"
+            }
+            target_lang = lang_map.get(language, "auto")
+            
+            # 计算音频块大小
+            sample_rate = 16000
+            chunk_size = int(chunk_duration * sample_rate)
+            total_chunks = (len(audio) + chunk_size - 1) // chunk_size
+            
+            start_time = time.time()
+            accumulated_text = ""
+            
+            # 分块处理音频
+            for i in range(total_chunks):
+                chunk_start = i * chunk_size
+                chunk_end = min((i + 1) * chunk_size, len(audio))
+                audio_chunk = audio[chunk_start:chunk_end]
+                
+                # 保存临时音频块
+                temp_chunk_path = file_path.parent / f"temp_chunk_{i}_{file_path.name}"
+                try:
+                    import soundfile as sf
+                    sf.write(str(temp_chunk_path), audio_chunk, sample_rate)
+                    
+                    # 转录当前块
+                    chunk_results = self.model.generate(
+                        input=[str(temp_chunk_path)],
+                        language=target_lang,
+                        use_itn=True,
+                        batch_size=1
+                    )
+                    
+                    if chunk_results and len(chunk_results) > 0:
+                        chunk_text = chunk_results[0].get("text", "")
+                        accumulated_text += chunk_text
+                        
+                        # 计算进度
+                        progress = (i + 1) / total_chunks
+                        processing_time = time.time() - start_time
+                        
+                        yield {
+                            "success": True,
+                            "chunk_index": i,
+                            "total_chunks": total_chunks,
+                            "progress": progress,
+                            "chunk_text": chunk_text,
+                            "accumulated_text": accumulated_text,
+                            "processing_time": processing_time,
+                            "is_final": i == total_chunks - 1,
+                            "file_name": file_path.name,
+                            "timestamp": int(time.time())
+                        }
+                        
+                finally:
+                    # 清理临时文件
+                    if temp_chunk_path.exists():
+                        temp_chunk_path.unlink()
+            
+            total_processing_time = time.time() - start_time
+            logger.info(f"流式转录完成，总耗时: {total_processing_time:.2f}秒，文本长度: {len(accumulated_text)}")
+            
+        except Exception as e:
+            error_msg = f"流式转录过程中发生错误: {str(e)}"
+            logger.error(f"流式音频转录失败: {file_path.name}, 错误: {error_msg}")
+            yield {
+                "success": False,
+                "error": error_msg,
+                "file_name": file_path.name,
+                "timestamp": int(time.time())
+            }
+
     async def transcribe_audio(
         self,
         file_path: Path,

@@ -7,7 +7,7 @@ from typing import Optional
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, File, UploadFile, Form, HTTPException, Depends
-from fastapi.responses import JSONResponse, FileResponse
+from fastapi.responses import JSONResponse, FileResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from loguru import logger
@@ -271,6 +271,65 @@ async def transcribe_audio(
         # 清理临时文件
         if file_path and file_path.exists():
             fm.delete_file(file_path)
+
+
+@app.post("/transcribe-stream")
+async def transcribe_audio_stream(
+    file: UploadFile = File(..., description="音频文件"),
+    keywords: Optional[str] = Form(None, description="关键词，用逗号分隔"),
+    language: str = Form(default="zh-CN", description="语言代码"),
+    chunk_duration: float = Form(default=30.0, description="音频块时长（秒）"),
+    fm: FileManager = Depends(get_file_manager),
+    sv_client: SenseVoiceClient = Depends(get_sensevoice_client)
+):
+    """流式转录音频文件"""
+    file_path = None
+    
+    async def generate_stream():
+        nonlocal file_path
+        try:
+            # 读取并保存文件
+            file_content = await file.read()
+            file_path = await fm.save_upload_file(file_content, file.filename)
+            
+            if file_path is None:
+                yield f"data: {{\"success\": false, \"error\": \"文件保存失败，请检查文件格式和大小\"}}\n\n"
+                return
+            
+            # 流式转录音频
+            async for result in sv_client.transcribe_audio_stream(
+                file_path=file_path,
+                keywords=keywords,
+                language=language,
+                chunk_duration=chunk_duration
+            ):
+                import json
+                yield f"data: {json.dumps(result, ensure_ascii=False)}\n\n"
+                
+        except Exception as e:
+            import json
+            error_result = {
+                "success": False,
+                "error": f"流式转录失败: {str(e)}",
+                "timestamp": int(time.time())
+            }
+            yield f"data: {json.dumps(error_result, ensure_ascii=False)}\n\n"
+        
+        finally:
+            # 清理临时文件
+            if file_path and file_path.exists():
+                fm.delete_file(file_path)
+    
+    return StreamingResponse(
+        generate_stream(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Headers": "*"
+        }
+    )
 
 
 @app.get("/download/{text}", response_class=FileResponse)

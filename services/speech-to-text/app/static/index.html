@@ -281,6 +281,7 @@
 
         <div style="text-align: center;">
             <button class="btn" id="transcribeBtn" disabled>🎯 开始转录</button>
+            <button class="btn" id="streamTranscribeBtn" disabled style="margin-left: 10px;">🌊 流式转录</button>
         </div>
 
         <div class="progress" id="progress">
@@ -323,8 +324,12 @@
         const copyBtn = document.getElementById('copyBtn');
         const downloadBtn = document.getElementById('downloadBtn');
         const newTranscriptionBtn = document.getElementById('newTranscriptionBtn');
+        const streamTranscribeBtn = document.getElementById('streamTranscribeBtn');
         const keywords = document.getElementById('keywords');
         const language = document.getElementById('language');
+        
+        let isStreaming = false;
+        let eventSource = null;
 
         // 文件上传处理
         uploadArea.addEventListener('click', () => fileInput.click());
@@ -373,12 +378,14 @@
             
             fileInfo.style.display = 'block';
             transcribeBtn.disabled = false;
+            streamTranscribeBtn.disabled = false;
             
             hideMessages();
         }
 
         // 转录处理
         transcribeBtn.addEventListener('click', startTranscription);
+        streamTranscribeBtn.addEventListener('click', startStreamTranscription);
 
         async function startTranscription() {
             if (!selectedFile) {
@@ -422,6 +429,139 @@
             }
         }
 
+        async function startStreamTranscription() {
+            if (!selectedFile) {
+                showError('请先选择音频文件');
+                return;
+            }
+
+            if (isStreaming) {
+                stopStreamTranscription();
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+            formData.append('language', language.value);
+            formData.append('chunk_duration', '30.0');
+            
+            if (keywords.value.trim()) {
+                formData.append('keywords', keywords.value.trim());
+            }
+
+            try {
+                isStreaming = true;
+                transcribeBtn.disabled = true;
+                streamTranscribeBtn.textContent = '⏹️ 停止转录';
+                streamTranscribeBtn.disabled = false;
+                showStreamProgress();
+                hideMessages();
+                
+                // 清空之前的结果
+                resultText.textContent = '';
+                result.style.display = 'block';
+                transcriptionResult = '';
+
+                // 发送文件并开始流式接收
+                const response = await fetch('/transcribe-stream', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let buffer = '';
+
+                while (isStreaming) {
+                    const { done, value } = await reader.read();
+                    
+                    if (done) break;
+                    
+                    buffer += decoder.decode(value, { stream: true });
+                    const lines = buffer.split('\n');
+                    buffer = lines.pop(); // 保留不完整的行
+                    
+                    for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                            try {
+                                const data = JSON.parse(line.slice(6));
+                                handleStreamData(data);
+                            } catch (e) {
+                                console.error('解析流数据失败:', e);
+                            }
+                        }
+                    }
+                }
+                
+            } catch (err) {
+                showError('流式转录失败，请稍后重试');
+                console.error('流式转录错误:', err);
+            } finally {
+                stopStreamTranscription();
+            }
+        }
+
+        function handleStreamData(data) {
+            if (!data.success) {
+                showError(data.error || '转录失败');
+                stopStreamTranscription();
+                return;
+            }
+
+            // 更新进度
+            if (data.progress !== undefined) {
+                const progressPercent = Math.round(data.progress * 100);
+                progressFill.style.width = progressPercent + '%';
+                
+                // 更新进度文本
+                const progressText = document.querySelector('.progress div');
+                if (progressText) {
+                    progressText.textContent = `正在处理中... ${progressPercent}% (${data.chunk_index + 1}/${data.total_chunks})`;
+                }
+            }
+
+            // 更新转录文本
+            if (data.accumulated_text) {
+                transcriptionResult = data.accumulated_text;
+                resultText.textContent = transcriptionResult;
+                
+                // 自动滚动到底部
+                resultText.scrollTop = resultText.scrollHeight;
+            }
+
+            // 如果是最后一块，显示完成信息
+            if (data.is_final) {
+                showSuccess(`流式转录完成！总处理时间: ${data.processing_time?.toFixed(2) || 'N/A'} 秒`);
+                stopStreamTranscription();
+            }
+        }
+
+        function stopStreamTranscription() {
+            isStreaming = false;
+            transcribeBtn.disabled = false;
+            streamTranscribeBtn.textContent = '🌊 流式转录';
+            streamTranscribeBtn.disabled = false;
+            hideProgress();
+            
+            if (eventSource) {
+                eventSource.close();
+                eventSource = null;
+            }
+        }
+
+        function showStreamProgress() {
+            progress.style.display = 'block';
+            progressFill.style.width = '0%';
+            const progressText = document.querySelector('.progress div');
+            if (progressText) {
+                progressText.textContent = '正在处理中... 0%';
+            }
+        }
+
         // 结果处理
         function showResult(data) {
             resultText.textContent = data.transcription || '转录结果为空';
@@ -461,12 +601,18 @@
 
         // 新的转录
         newTranscriptionBtn.addEventListener('click', () => {
+            // 停止流式转录（如果正在进行）
+            if (isStreaming) {
+                stopStreamTranscription();
+            }
+            
             selectedFile = null;
             transcriptionResult = null;
             fileInput.value = '';
             fileInfo.style.display = 'none';
             result.style.display = 'none';
             transcribeBtn.disabled = true;
+            streamTranscribeBtn.disabled = true;
             hideMessages();
         });
 
