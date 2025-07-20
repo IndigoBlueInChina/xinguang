@@ -1,0 +1,97 @@
+# 易和书院服务编排
+version: '3.8'
+
+services:
+  # Nginx反向代理
+  nginx:
+    image: nginx:alpine
+    container_name: yiheshuyuan-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - ./nginx/logs:/var/log/nginx
+      - ./nginx/.htpasswd:/etc/nginx/.htpasswd:ro
+    depends_on:
+      - speech-to-text
+    networks:
+      - yiheshuyuan-network
+    healthcheck:
+      test: ["CMD", "nginx", "-t"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # 语音转文字服务
+  speech-to-text:
+    build:
+      context: ./services/speech-to-text
+      dockerfile: Dockerfile
+    container_name: yiheshuyuan-speech-to-text
+    restart: unless-stopped
+    expose:
+      - "8000"
+    volumes:
+      - speech-to-text-models:/app/models
+      - speech-to-text-uploads:/app/uploads
+      - speech-to-text-logs:/app/logs
+    environment:
+      - APP_NAME=易和书院语音转文字服务
+      - APP_VERSION=0.1.0
+      - DEBUG=false
+      - HOST=0.0.0.0
+      - PORT=8000
+      - SENSEVOICE_DEVICE=auto
+      - SENSEVOICE_BATCH_SIZE=1
+      - SENSEVOICE_QUANTIZE=true
+      - SENSEVOICE_CACHE_DIR=/app/models
+      - UPLOAD_DIR=/app/uploads
+      - MAX_FILE_SIZE=104857600
+      - ALLOWED_EXTENSIONS=wav,mp3,m4a,flac,aac,ogg,wma
+      - FILE_CLEANUP_INTERVAL=24
+      - FILE_RETENTION_HOURS=72
+      - SECRET_KEY=your-super-secret-key-change-this-in-production
+      - JWT_ALGORITHM=HS256
+      - JWT_EXPIRE_MINUTES=30
+      - LOG_LEVEL=INFO
+      - LOG_DIR=/app/logs
+    networks:
+      - yiheshuyuan-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+networks:
+  yiheshuyuan-network:
+    driver: bridge
+    name: yiheshuyuan-network
+
+volumes:
+  # 语音转文字服务数据卷
+  speech-to-text-models:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./data/speech-to-text/models
+  
+  speech-to-text-uploads:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./data/speech-to-text/uploads
+  
+  speech-to-text-logs:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./data/speech-to-text/logs

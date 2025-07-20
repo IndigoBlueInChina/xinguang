@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>易和书院 - 录音转文字服务</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            color: #333;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            font-weight: 300;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 1.1em;
+        }
+
+        .upload-area {
+            border: 3px dashed #ddd;
+            border-radius: 15px;
+            padding: 40px;
+            text-align: center;
+            margin-bottom: 30px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .upload-area:hover {
+            border-color: #667eea;
+            background-color: #f8f9ff;
+        }
+
+        .upload-area.dragover {
+            border-color: #667eea;
+            background-color: #f0f4ff;
+        }
+
+        .upload-icon {
+            font-size: 3em;
+            color: #ddd;
+            margin-bottom: 20px;
+        }
+
+        .upload-text {
+            color: #666;
+            font-size: 1.1em;
+            margin-bottom: 15px;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            font-size: 1em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 5px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .options {
+            margin-bottom: 30px;
+        }
+
+        .option-group {
+            margin-bottom: 20px;
+        }
+
+        .option-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 500;
+        }
+
+        .option-group input,
+        .option-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #eee;
+            border-radius: 10px;
+            font-size: 1em;
+            transition: border-color 0.3s ease;
+        }
+
+        .option-group input:focus,
+        .option-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .progress {
+            display: none;
+            margin: 20px 0;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #eee;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .result {
+            display: none;
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 15px;
+        }
+
+        .result h3 {
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        .result-text {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid #eee;
+            min-height: 150px;
+            font-size: 1.1em;
+            line-height: 1.6;
+            color: #333;
+            white-space: pre-wrap;
+        }
+
+        .result-actions {
+            margin-top: 15px;
+            text-align: center;
+        }
+
+        .error {
+            color: #e74c3c;
+            background: #ffeaea;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+            display: none;
+        }
+
+        .success {
+            color: #27ae60;
+            background: #eafaf1;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+            display: none;
+        }
+
+        .file-info {
+            display: none;
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+        }
+
+        .file-info h4 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .file-details {
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+                margin: 10px;
+            }
+
+            .header h1 {
+                font-size: 2em;
+            }
+
+            .upload-area {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎙️ 易和书院</h1>
+            <p>基于阿里SenseVoice的智能录音转文字服务</p>
+        </div>
+
+        <div class="upload-area" id="uploadArea">
+            <div class="upload-icon">📁</div>
+            <div class="upload-text">点击选择音频文件或拖拽文件到此处</div>
+            <div style="color: #999; font-size: 0.9em; margin-top: 10px;">
+                支持格式: WAV, MP3, M4A, FLAC, AAC, OGG<br>
+                最大文件大小: 100MB
+            </div>
+            <input type="file" id="fileInput" class="file-input" accept=".wav,.mp3,.m4a,.flac,.aac,.ogg">
+        </div>
+
+        <div class="file-info" id="fileInfo">
+            <h4>📄 文件信息</h4>
+            <div class="file-details" id="fileDetails"></div>
+        </div>
+
+        <div class="options">
+            <div class="option-group">
+                <label for="keywords">🔑 关键词 (可选)</label>
+                <input type="text" id="keywords" placeholder="输入关键词，用逗号分隔，如：会议,讨论,项目">
+            </div>
+            
+            <div class="option-group">
+                <label for="language">🌐 语言</label>
+                <select id="language">
+                    <option value="zh-CN">中文 (简体)</option>
+                    <option value="en-US">English (US)</option>
+                    <option value="ja-JP">日本語</option>
+                    <option value="ko-KR">한국어</option>
+                </select>
+            </div>
+        </div>
+
+        <div style="text-align: center;">
+            <button class="btn" id="transcribeBtn" disabled>🎯 开始转录</button>
+        </div>
+
+        <div class="progress" id="progress">
+            <div style="text-align: center; margin-bottom: 10px; color: #666;">正在处理中...</div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+        </div>
+
+        <div class="error" id="error"></div>
+        <div class="success" id="success"></div>
+
+        <div class="result" id="result">
+            <h3>📝 转录结果</h3>
+            <div class="result-text" id="resultText"></div>
+            <div class="result-actions">
+                <button class="btn" id="copyBtn">📋 复制文本</button>
+                <button class="btn" id="downloadBtn">💾 下载文本</button>
+                <button class="btn" id="newTranscriptionBtn">🔄 新的转录</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let selectedFile = null;
+        let transcriptionResult = null;
+
+        // DOM 元素
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const fileInfo = document.getElementById('fileInfo');
+        const fileDetails = document.getElementById('fileDetails');
+        const transcribeBtn = document.getElementById('transcribeBtn');
+        const progress = document.getElementById('progress');
+        const progressFill = document.getElementById('progressFill');
+        const error = document.getElementById('error');
+        const success = document.getElementById('success');
+        const result = document.getElementById('result');
+        const resultText = document.getElementById('resultText');
+        const copyBtn = document.getElementById('copyBtn');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const newTranscriptionBtn = document.getElementById('newTranscriptionBtn');
+        const keywords = document.getElementById('keywords');
+        const language = document.getElementById('language');
+
+        // 文件上传处理
+        uploadArea.addEventListener('click', () => fileInput.click());
+        uploadArea.addEventListener('dragover', handleDragOver);
+        uploadArea.addEventListener('dragleave', handleDragLeave);
+        uploadArea.addEventListener('drop', handleDrop);
+        fileInput.addEventListener('change', handleFileSelect);
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        }
+
+        function handleDragLeave(e) {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFile(files[0]);
+            }
+        }
+
+        function handleFileSelect(e) {
+            const files = e.target.files;
+            if (files.length > 0) {
+                handleFile(files[0]);
+            }
+        }
+
+        function handleFile(file) {
+            selectedFile = file;
+            
+            // 显示文件信息
+            const sizeInMB = (file.size / (1024 * 1024)).toFixed(2);
+            fileDetails.innerHTML = `
+                <strong>文件名:</strong> ${file.name}<br>
+                <strong>大小:</strong> ${sizeInMB} MB<br>
+                <strong>类型:</strong> ${file.type || '未知'}<br>
+                <strong>最后修改:</strong> ${new Date(file.lastModified).toLocaleString()}
+            `;
+            
+            fileInfo.style.display = 'block';
+            transcribeBtn.disabled = false;
+            
+            hideMessages();
+        }
+
+        // 转录处理
+        transcribeBtn.addEventListener('click', startTranscription);
+
+        async function startTranscription() {
+            if (!selectedFile) {
+                showError('请先选择音频文件');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+            formData.append('language', language.value);
+            
+            if (keywords.value.trim()) {
+                formData.append('keywords', keywords.value.trim());
+            }
+
+            try {
+                transcribeBtn.disabled = true;
+                showProgress();
+                hideMessages();
+
+                const response = await fetch('/transcribe', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    transcriptionResult = data.transcription;
+                    showResult(data);
+                    showSuccess(`转录完成！处理时间: ${data.processing_time?.toFixed(2) || 'N/A'} 秒`);
+                } else {
+                    showError(data.error || '转录失败');
+                }
+            } catch (err) {
+                showError('网络错误，请稍后重试');
+                console.error('转录错误:', err);
+            } finally {
+                hideProgress();
+                transcribeBtn.disabled = false;
+            }
+        }
+
+        // 结果处理
+        function showResult(data) {
+            resultText.textContent = data.transcription || '转录结果为空';
+            result.style.display = 'block';
+        }
+
+        // 复制文本
+        copyBtn.addEventListener('click', async () => {
+            try {
+                await navigator.clipboard.writeText(transcriptionResult);
+                showSuccess('文本已复制到剪贴板');
+            } catch (err) {
+                // 降级方案
+                const textArea = document.createElement('textarea');
+                textArea.value = transcriptionResult;
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+                showSuccess('文本已复制到剪贴板');
+            }
+        });
+
+        // 下载文本
+        downloadBtn.addEventListener('click', () => {
+            const blob = new Blob([transcriptionResult], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `转录文本_${new Date().getTime()}.txt`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showSuccess('文本文件已下载');
+        });
+
+        // 新的转录
+        newTranscriptionBtn.addEventListener('click', () => {
+            selectedFile = null;
+            transcriptionResult = null;
+            fileInput.value = '';
+            fileInfo.style.display = 'none';
+            result.style.display = 'none';
+            transcribeBtn.disabled = true;
+            hideMessages();
+        });
+
+        // 工具函数
+        function showProgress() {
+            progress.style.display = 'block';
+            let width = 0;
+            const interval = setInterval(() => {
+                width += Math.random() * 10;
+                if (width >= 90) {
+                    clearInterval(interval);
+                    width = 90;
+                }
+                progressFill.style.width = width + '%';
+            }, 200);
+        }
+
+        function hideProgress() {
+            progress.style.display = 'none';
+            progressFill.style.width = '0%';
+        }
+
+        function showError(message) {
+            error.textContent = message;
+            error.style.display = 'block';
+            success.style.display = 'none';
+        }
+
+        function showSuccess(message) {
+            success.textContent = message;
+            success.style.display = 'block';
+            error.style.display = 'none';
+        }
+
+        function hideMessages() {
+            error.style.display = 'none';
+            success.style.display = 'none';
+        }
+    </script>
+</body>
+</html>
