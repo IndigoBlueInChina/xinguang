@@ -26,7 +26,7 @@
             border-radius: 20px;
             box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
             padding: 40px;
-            max-width: 600px;
+            max-width: min(85vw, 1600px);
             width: 100%;
         }
 
@@ -224,10 +224,98 @@
             font-size: 0.9em;
         }
 
+        /* 4K和超大屏幕优化 (1920px+) */
+        @media (min-width: 1920px) {
+            .container {
+                max-width: 1600px;
+                padding: 80px;
+            }
+            
+            .header h1 {
+                font-size: 3.5em;
+            }
+            
+            .header p {
+                font-size: 1.3em;
+            }
+            
+            .upload-area {
+                padding: 80px;
+            }
+            
+            .upload-icon {
+                font-size: 4em;
+            }
+            
+            .upload-text {
+                font-size: 1.3em;
+            }
+            
+            .result-text {
+                min-height: 250px;
+                font-size: 1.3em;
+                line-height: 1.8;
+            }
+            
+            .btn {
+                padding: 15px 40px;
+                font-size: 1.1em;
+            }
+            
+            .option-group label {
+                font-size: 1.1em;
+            }
+            
+            .option-group input,
+            .option-group select {
+                padding: 15px;
+                font-size: 1.1em;
+            }
+        }
+        
+        /* 大屏幕优化 (1200px - 1919px) */
+        @media (min-width: 1200px) and (max-width: 1919px) {
+            .container {
+                max-width: 1200px;
+                padding: 60px;
+            }
+            
+            .header h1 {
+                font-size: 3em;
+            }
+            
+            .upload-area {
+                padding: 60px;
+            }
+            
+            .result-text {
+                min-height: 200px;
+                font-size: 1.2em;
+            }
+        }
+        
+        /* 中等屏幕优化 (768px - 1199px) */
+        @media (min-width: 768px) and (max-width: 1199px) {
+            .container {
+                max-width: 90vw;
+                padding: 50px;
+            }
+            
+            .header h1 {
+                font-size: 2.8em;
+            }
+            
+            .upload-area {
+                padding: 50px;
+            }
+        }
+        
+        /* 小屏幕优化 (768px以下) */
         @media (max-width: 768px) {
             .container {
                 padding: 20px;
                 margin: 10px;
+                max-width: 95vw;
             }
 
             .header h1 {
@@ -236,6 +324,51 @@
 
             .upload-area {
                 padding: 20px;
+            }
+            
+            .btn {
+                padding: 10px 20px;
+                font-size: 0.9em;
+                margin: 3px;
+            }
+        }
+        
+        /* 超小屏幕优化 (480px以下) */
+        @media (max-width: 480px) {
+            body {
+                padding: 10px;
+            }
+            
+            .container {
+                padding: 15px;
+                margin: 5px;
+                border-radius: 15px;
+            }
+            
+            .header h1 {
+                font-size: 1.8em;
+            }
+            
+            .header p {
+                font-size: 1em;
+            }
+            
+            .upload-area {
+                padding: 15px;
+            }
+            
+            .upload-icon {
+                font-size: 2em;
+            }
+            
+            .btn {
+                width: 100%;
+                margin: 5px 0;
+            }
+            
+            .result-actions .btn {
+                width: auto;
+                margin: 3px;
             }
         }
     </style>
@@ -252,7 +385,7 @@
             <div class="upload-text">点击选择音频文件或拖拽文件到此处</div>
             <div style="color: #999; font-size: 0.9em; margin-top: 10px;">
                 支持格式: WAV, MP3, M4A, FLAC, AAC, OGG<br>
-                最大文件大小: 100MB
+                最大文件大小: 1GB
             </div>
             <input type="file" id="fileInput" class="file-input" accept=".wav,.mp3,.m4a,.flac,.aac,.ogg">
         </div>

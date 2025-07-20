@@ -124,7 +124,7 @@ class SenseVoiceClient:
         
         Args:
             file_path: 音频文件路径
-            keywords: 关键词，用逗号分隔（暂不支持）
+            keywords: 关键词，用逗号分隔，用于提高特定词汇的识别准确率
             language: 语言代码 (auto, zh, en, ja, ko等)
             chunk_duration: 每个音频块的时长（秒）
             
@@ -173,12 +173,18 @@ class SenseVoiceClient:
                     sf.write(str(temp_chunk_path), audio_chunk, sample_rate)
                     
                     # 转录当前块
-                    chunk_results = self.model.generate(
-                        input=[str(temp_chunk_path)],
-                        language=target_lang,
-                        use_itn=True,
-                        batch_size=1
-                    )
+                    generate_kwargs = {
+                        "input": [str(temp_chunk_path)],
+                        "language": target_lang,
+                        "use_itn": True,
+                        "batch_size": 1
+                    }
+                    
+                    # 添加关键词支持
+                    if keywords and keywords.strip():
+                        generate_kwargs["hotword"] = keywords.strip()
+                    
+                    chunk_results = self.model.generate(**generate_kwargs)
                     
                     if chunk_results and len(chunk_results) > 0:
                         chunk_text = chunk_results[0].get("text", "")
@@ -231,7 +237,7 @@ class SenseVoiceClient:
         
         Args:
             file_path: 音频文件路径
-            keywords: 关键词，用逗号分隔（暂不支持）
+            keywords: 关键词，用逗号分隔，用于提高特定词汇的识别准确率
             language: 语言代码 (auto, zh, en, ja, ko等)
             format_type: 音频格式（暂不使用）
             sample_rate: 采样率（暂不使用）
@@ -265,12 +271,19 @@ class SenseVoiceClient:
             
             # 执行推理
             start_time = time.time()
-            results = self.model.generate(
-                input=input_data,
-                language=target_lang,
-                use_itn=True,
-                batch_size=self.batch_size
-            )
+            
+            generate_kwargs = {
+                "input": input_data,
+                "language": target_lang,
+                "use_itn": True,
+                "batch_size": self.batch_size
+            }
+            
+            # 添加关键词支持
+            if keywords and keywords.strip():
+                generate_kwargs["hotword"] = keywords.strip()
+            
+            results = self.model.generate(**generate_kwargs)
             
             processing_time = time.time() - start_time
             
