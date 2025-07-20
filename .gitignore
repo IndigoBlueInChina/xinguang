@@ -271,8 +271,13 @@ temp/
 *~
 
 # Project specific
-# Data directories
-data/
+# Data directories - allow structure but ignore content
+data/*/models/*
+data/*/uploads/*
+data/*/logs/*
+!data/*/models/.gitkeep
+!data/*/uploads/.gitkeep
+!data/*/logs/.gitkeep
 uploads/
 models/
 
