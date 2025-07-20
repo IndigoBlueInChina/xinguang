@@ -1,7 +1,7 @@
 """应用配置模块"""
 
 from typing import Optional
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings
 
 
@@ -46,6 +46,14 @@ class Settings(BaseSettings):
         default=["wav", "mp3", "m4a", "flac", "aac", "ogg"],
         description="允许的文件扩展名"
     )
+    
+    @field_validator('allowed_extensions', mode='before')
+    @classmethod
+    def parse_allowed_extensions(cls, v):
+        """解析允许的文件扩展名，支持逗号分隔的字符串"""
+        if isinstance(v, str):
+            return [ext.strip() for ext in v.split(',') if ext.strip()]
+        return v
     
     # 文件清理配置
     file_cleanup_interval: int = Field(default=3600, description="文件清理间隔(秒)")
