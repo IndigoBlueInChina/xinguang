@@ -1,5 +1,5 @@
-# Single stage build
-FROM python:3.11-slim
+# Build stage
+FROM python:3.11-slim AS builder
 
 # Set environment variables for better Python and Poetry behavior
 ENV PYTHONUNBUFFERED=1 \
@@ -12,15 +12,13 @@ ENV PYTHONUNBUFFERED=1 \
     POETRY_NO_INTERACTION=1 \
     POETRY_VERSION=2.1.2
 
-# Install system dependencies (both build and runtime)
+# Install build dependencies
 RUN apt-get update && apt-get install -y \
     gcc \
     libc6-dev \
     curl \
     build-essential \
     git \
-    ffmpeg \
-    libsndfile1 \
     && rm -rf /var/lib/apt/lists/*
 
 # 安装指定版本的 Poetry
@@ -32,12 +30,33 @@ WORKDIR /app
 # Copy Poetry configuration files first for better caching
 COPY pyproject.toml poetry.lock* ./
 
-# Install dependencies
+# Install dependencies (CPU版本)
 RUN poetry --version && poetry install --only main --no-root --no-interaction
 
 # Copy the rest of the application
 COPY app/ ./app/
 COPY shared/ ./shared/
+
+# Production stage
+FROM python:3.11-slim
+
+# Install only runtime dependencies
+RUN apt-get update && apt-get install -y \
+    ffmpeg \
+    libsndfile1 \
+    curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+# Set working directory
+WORKDIR /app
+
+# Copy virtual environment from builder
+COPY --from=builder /app/.venv /app/.venv
+
+# Copy application code
+COPY --from=builder /app/app ./app
+COPY --from=builder /app/shared ./shared
 
 # Set environment variables
 ENV PYTHONPATH="/app" \

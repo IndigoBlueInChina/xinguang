@@ -367,12 +367,6 @@ cache/
 *.lz4
 *.zst
 
-# Lock files
-*.lock
-package-lock.json
-yarn.lock
-poetry.lock
-Pipfile.lock
 
 # Process files
 *.pid
