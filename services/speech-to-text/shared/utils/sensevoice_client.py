@@ -176,7 +176,7 @@ class SenseVoiceClient:
                     generate_kwargs = {
                         "input": [str(temp_chunk_path)],
                         "language": target_lang,
-                        "use_itn": True,
+                        "use_itn": false,
                         "batch_size": 1
                     }
                     
@@ -275,7 +275,7 @@ class SenseVoiceClient:
             generate_kwargs = {
                 "input": input_data,
                 "language": target_lang,
-                "use_itn": True,
+                "use_itn": false,
                 "batch_size": self.batch_size
             }
             

@@ -414,7 +414,6 @@
 
         <div style="text-align: center;">
             <button class="btn" id="transcribeBtn" disabled>🎯 开始转录</button>
-            <button class="btn" id="streamTranscribeBtn" disabled style="margin-left: 10px;">🌊 流式转录</button>
         </div>
 
         <div class="progress" id="progress">
@@ -457,7 +456,7 @@
         const copyBtn = document.getElementById('copyBtn');
         const downloadBtn = document.getElementById('downloadBtn');
         const newTranscriptionBtn = document.getElementById('newTranscriptionBtn');
-        const streamTranscribeBtn = document.getElementById('streamTranscribeBtn');
+        // 移除流式转录按钮引用
         const keywords = document.getElementById('keywords');
         const language = document.getElementById('language');
         
@@ -511,56 +510,14 @@
             
             fileInfo.style.display = 'block';
             transcribeBtn.disabled = false;
-            streamTranscribeBtn.disabled = false;
             
             hideMessages();
         }
 
         // 转录处理
-        transcribeBtn.addEventListener('click', startTranscription);
-        streamTranscribeBtn.addEventListener('click', startStreamTranscription);
+        transcribeBtn.addEventListener('click', startStreamTranscription);
 
-        async function startTranscription() {
-            if (!selectedFile) {
-                showError('请先选择音频文件');
-                return;
-            }
-
-            const formData = new FormData();
-            formData.append('file', selectedFile);
-            formData.append('language', language.value);
-            
-            if (keywords.value.trim()) {
-                formData.append('keywords', keywords.value.trim());
-            }
-
-            try {
-                transcribeBtn.disabled = true;
-                showProgress();
-                hideMessages();
-
-                const response = await fetch('/transcribe', {
-                    method: 'POST',
-                    body: formData
-                });
-
-                const data = await response.json();
-
-                if (data.success) {
-                    transcriptionResult = data.transcription;
-                    showResult(data);
-                    showSuccess(`转录完成！处理时间: ${data.processing_time?.toFixed(2) || 'N/A'} 秒`);
-                } else {
-                    showError(data.error || '转录失败');
-                }
-            } catch (err) {
-                showError('网络错误，请稍后重试');
-                console.error('转录错误:', err);
-            } finally {
-                hideProgress();
-                transcribeBtn.disabled = false;
-            }
-        }
+        // 移除了原来的startTranscription函数，现在统一使用流式转录
 
         async function startStreamTranscription() {
             if (!selectedFile) {
@@ -584,9 +541,8 @@
 
             try {
                 isStreaming = true;
-                transcribeBtn.disabled = true;
-                streamTranscribeBtn.textContent = '⏹️ 停止转录';
-                streamTranscribeBtn.disabled = false;
+                transcribeBtn.textContent = '⏹️ 停止转录';
+                transcribeBtn.disabled = false;
                 showStreamProgress();
                 hideMessages();
                 
@@ -676,8 +632,7 @@
         function stopStreamTranscription() {
             isStreaming = false;
             transcribeBtn.disabled = false;
-            streamTranscribeBtn.textContent = '🌊 流式转录';
-            streamTranscribeBtn.disabled = false;
+            transcribeBtn.textContent = '🎯 开始转录';
             hideProgress();
             
             if (eventSource) {
@@ -745,7 +700,6 @@
             fileInfo.style.display = 'none';
             result.style.display = 'none';
             transcribeBtn.disabled = true;
-            streamTranscribeBtn.disabled = true;
             hideMessages();
         });
 
