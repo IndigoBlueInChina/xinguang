@@ -176,8 +176,11 @@ class SenseVoiceClient:
                     generate_kwargs = {
                         "input": [str(temp_chunk_path)],
                         "language": target_lang,
-                        "use_itn": false,
-                        "batch_size": 1
+                        "use_itn": True,
+                        "batch_size": 1,
+                        "batch_size_s": 100,      # 每批处理100秒
+                        "signal_type": "linear",   # 线性信号
+                        "mode": "offline"          # 离线模式
                     }
                     
                     # 添加关键词支持
@@ -188,6 +191,8 @@ class SenseVoiceClient:
                     
                     if chunk_results and len(chunk_results) > 0:
                         chunk_text = chunk_results[0].get("text", "")
+                        # 使用后处理函数去除标签
+                        chunk_text = rich_transcription_postprocess(chunk_text)
                         accumulated_text += chunk_text
                         
                         # 计算进度
@@ -225,103 +230,7 @@ class SenseVoiceClient:
                 "timestamp": int(time.time())
             }
 
-    async def transcribe_audio(
-        self,
-        file_path: Path,
-        keywords: Optional[str] = None,
-        language: str = "auto",
-        format_type: str = "wav",
-        sample_rate: int = 16000
-    ) -> Dict[str, Any]:
-        """转录音频文件
-        
-        Args:
-            file_path: 音频文件路径
-            keywords: 关键词，用逗号分隔，用于提高特定词汇的识别准确率
-            language: 语言代码 (auto, zh, en, ja, ko等)
-            format_type: 音频格式（暂不使用）
-            sample_rate: 采样率（暂不使用）
-            
-        Returns:
-            转录结果字典
-        """
-        try:
-            if self.model is None:
-                raise Exception("模型未初始化")
-            
-            # 加载和预处理音频
-            logger.info(f"开始转录音频文件: {file_path.name}")
-            audio = self._load_audio(file_path)
-            audio = self._preprocess_audio(audio)
-            
-            # 构建输入参数
-            input_data = [str(file_path)]
-            
-            # 设置语言参数
-            lang_map = {
-                "auto": "auto",
-                "zh": "zh",
-                "zh-CN": "zh",
-                "en": "en", 
-                "ja": "ja",
-                "ko": "ko",
-                "yue": "yue"
-            }
-            target_lang = lang_map.get(language, "auto")
-            
-            # 执行推理
-            start_time = time.time()
-            
-            generate_kwargs = {
-                "input": input_data,
-                "language": target_lang,
-                "use_itn": false,
-                "batch_size": self.batch_size
-            }
-            
-            # 添加关键词支持
-            if keywords and keywords.strip():
-                generate_kwargs["hotword"] = keywords.strip()
-            
-            results = self.model.generate(**generate_kwargs)
-            
-            processing_time = time.time() - start_time
-            
-            # 处理结果
-            if not results or len(results) == 0:
-                return {
-                    "success": True,
-                    "transcription": "",
-                    "task_id": f"local_{int(time.time())}",
-                    "processing_time": processing_time,
-                    "file_name": file_path.name,
-                    "timestamp": int(time.time())
-                }
-            
-            result = results[0]
-            text = result.get("text", "")
-            
-            logger.info(f"转录完成，耗时: {processing_time:.2f}秒，文本长度: {len(text)}")
-            
-            return {
-                "success": True,
-                "transcription": text,
-                "task_id": f"local_{int(time.time())}",
-                "processing_time": processing_time,
-                "file_name": file_path.name,
-                "timestamp": int(time.time())
-            }
-            
-        except Exception as e:
-            error_msg = f"转录过程中发生错误: {str(e)}"
-            logger.error(f"音频转录失败: {file_path.name}, 错误: {error_msg}")
-            return {
-                "success": False,
-                "error": error_msg,
-                "file_name": file_path.name,
-                "timestamp": int(time.time())
-            }
-    
+
     def get_model_info(self) -> Dict[str, Any]:
         """获取模型信息"""
         try:

@@ -222,57 +222,6 @@ async def upload_audio(
         raise HTTPException(status_code=500, detail=f"上传失败: {str(e)}")
 
 
-@app.post("/transcribe", response_model=TranscriptionResponse)
-async def transcribe_audio(
-    file: UploadFile = File(..., description="音频文件"),
-    keywords: Optional[str] = Form(None, description="关键词，用逗号分隔"),
-    language: str = Form(default="zh-CN", description="语言代码"),
-    fm: FileManager = Depends(get_file_manager),
-    sv_client: SenseVoiceClient = Depends(get_sensevoice_client)
-):
-    """转录音频文件"""
-    file_path = None
-    
-    try:
-        # 读取并保存文件
-        file_content = await file.read()
-        file_path = await fm.save_upload_file(file_content, file.filename)
-        
-        if file_path is None:
-            raise HTTPException(
-                status_code=400,
-                detail="文件保存失败，请检查文件格式和大小"
-            )
-        
-        # 转录音频
-        result = await sv_client.transcribe_audio(
-            file_path=file_path,
-            keywords=keywords,
-            language=language
-        )
-        
-        return TranscriptionResponse(
-            success=True,
-            transcription=result.get("transcription", ""),
-            task_id=result.get("task_id", ""),
-            processing_time=result.get("processing_time", 0.0),
-            file_name=file_path.name,
-            language=result.get("language", language),
-            timestamp=int(time.time())
-        )
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"转录音频时发生错误: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"转录失败: {str(e)}")
-    
-    finally:
-        # 清理临时文件
-        if file_path and file_path.exists():
-            fm.delete_file(file_path)
-
-
 @app.post("/transcribe-stream")
 async def transcribe_audio_stream(
     file: UploadFile = File(..., description="音频文件"),
