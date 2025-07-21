@@ -65,11 +65,11 @@ ENV PYTHONPATH="/app" \
     PYTHONUNBUFFERED=1 \
     MODELSCOPE_CACHE="/app/models" \
     HF_HOME="/app/models" \
-    TRANSFORMERS_CACHE="/app/models"
+    TRANSFORMERS_CACHE="/app/models" \
+    FUNASR_HOME="/app/models"
 
-# 创建非root用户
-RUN groupadd -r appuser && useradd -r -g appuser -d /home/appuser -s /bin/bash appuser
-
+# 创建非root用户和home目录
+RUN groupadd -r appuser && useradd -r -g appuser -d /home/appuser -s /bin/bash -m appuser
 
 # 设置目录权限
 RUN chown -R appuser:appuser /app
