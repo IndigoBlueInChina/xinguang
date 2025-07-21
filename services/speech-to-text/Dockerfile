@@ -66,13 +66,17 @@ ENV PYTHONPATH="/app" \
     HF_HOME="/app/models" \
     TRANSFORMERS_CACHE="/app/models"
 
-# 创建必要的目录
-RUN mkdir -p /app/uploads /app/logs /app/models
-
 # 创建非root用户和home目录
 RUN groupadd -r appuser && useradd -r -g appuser -m -d /home/appuser appuser
-RUN chown -R appuser:appuser /app
-RUN chown -R appuser:appuser /home/appuser
+
+# 创建必要的目录并设置权限
+RUN mkdir -p /app/uploads /app/logs /app/models && \
+    chown -R appuser:appuser /app && \
+    chown -R appuser:appuser /home/appuser && \
+    chmod -R 755 /app/models && \
+    chmod -R 755 /app/uploads && \
+    chmod -R 755 /app/logs
+
 USER appuser
 
 # 暴露端口
