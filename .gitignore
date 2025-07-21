@@ -507,3 +507,6 @@ $RECYCLE.BIN/
 .directory
 .Trash-*
 .nfs*
+
+data/speech-to-text/models/models/iic/
+
