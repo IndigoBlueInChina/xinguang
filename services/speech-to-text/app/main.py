@@ -286,9 +286,7 @@ async def transcribe_audio_stream(
                     "error": error_msg,
                     "timestamp": int(time.time())
                 }
-                yield f"data: {json.dumps(error_result, ensure_ascii=False)}
-
-"
+                yield f"data: {json.dumps(error_result, ensure_ascii=False)}\n\n"
                 return
             
             file_path = await fm.save_upload_file(file_content, file.filename)
@@ -302,9 +300,7 @@ async def transcribe_audio_stream(
                     "error": error_msg,
                     "timestamp": int(time.time())
                 }
-                yield f"data: {json.dumps(error_result, ensure_ascii=False)}
-
-"
+                yield f"data: {json.dumps(error_result, ensure_ascii=False)}\n\n"
                 return
             
             logger.info(f"流式转录文件保存成功 - 路径: {file_path}")
@@ -320,9 +316,7 @@ async def transcribe_audio_stream(
                 chunk_count += 1
                 logger.debug(f"流式转录块 {chunk_count} 完成")
                 import json
-                yield f"data: {json.dumps(result, ensure_ascii=False)}
-
-"
+                yield f"data: {json.dumps(result, ensure_ascii=False)}\n\n"
             
             logger.info(f"流式转录完成 - 总块数: {chunk_count}")
             access_logger.info(f"流式转录成功 - 文件: {file.filename}, 块数: {chunk_count}")
@@ -338,9 +332,7 @@ async def transcribe_audio_stream(
                 "error": error_msg,
                 "timestamp": int(time.time())
             }
-            yield f"data: {json.dumps(error_result, ensure_ascii=False)}
-
-"
+            yield f"data: {json.dumps(error_result, ensure_ascii=False)}\n\n"
         
         finally:
             # 清理临时文件

@@ -107,3 +107,6 @@ curl -X GET "http://localhost/health"
 
 
 https://www.python.org/ftp/python/3.11.13/Python-3.11.13.tgz
+
+
+docker-compose down --volumes --remove-orphans
