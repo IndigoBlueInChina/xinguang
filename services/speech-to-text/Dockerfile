@@ -45,6 +45,7 @@ RUN apt-get update && apt-get install -y \
     ffmpeg \
     libsndfile1 \
     curl \
+    gosu \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
 
@@ -66,12 +67,20 @@ ENV PYTHONPATH="/app" \
     HF_HOME="/app/models" \
     TRANSFORMERS_CACHE="/app/models"
 
+# 创建非root用户
+RUN groupadd -r appuser && useradd -r -g appuser -d /home/appuser -s /bin/bash appuser
+
+
+# 设置目录权限
+RUN chown -R appuser:appuser /app
+
+# 复制entrypoint脚本
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
 # 暴露端口
 EXPOSE 8000
 
-# 健康检查
-HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8000/health || exit 1
-
-# 启动命令
+# 设置entrypoint和默认命令
+ENTRYPOINT ["/entrypoint.sh"]
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
