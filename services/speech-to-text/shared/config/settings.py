@@ -65,7 +65,7 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = Field(default=30, description="访问令牌过期时间(分钟)")
     
     # 日志配置
-    log_level: str = Field(default="INFO", description="日志级别")
+    log_level: str = Field(default="DEBUG", description="日志级别")
     log_file: Optional[str] = Field(default=None, description="日志文件路径")
     
     model_config = {
