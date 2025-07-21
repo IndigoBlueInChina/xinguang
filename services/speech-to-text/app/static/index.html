@@ -497,6 +497,37 @@
         }
 
         function handleFile(file) {
+            // 检查文件大小限制 (1GB = 1073741824 bytes)
+            const maxFileSize = 1073741824; // 1GB
+            if (file.size > maxFileSize) {
+                const sizeInMB = (file.size / (1024 * 1024)).toFixed(2);
+                const maxSizeInMB = (maxFileSize / (1024 * 1024)).toFixed(0);
+                showError(`文件大小超出限制！当前文件大小: ${sizeInMB} MB，最大允许: ${maxSizeInMB} MB`);
+                
+                // 清空文件选择
+                fileInput.value = '';
+                selectedFile = null;
+                fileInfo.style.display = 'none';
+                transcribeBtn.disabled = true;
+                return;
+            }
+            
+            // 检查文件类型
+            const allowedExtensions = ['wav', 'mp3', 'm4a', 'flac', 'aac', 'ogg'];
+            const fileName = file.name.toLowerCase();
+            const fileExtension = fileName.split('.').pop();
+            
+            if (!allowedExtensions.includes(fileExtension)) {
+                showError(`不支持的文件格式！支持的格式: ${allowedExtensions.join(', ').toUpperCase()}`);
+                
+                // 清空文件选择
+                fileInput.value = '';
+                selectedFile = null;
+                fileInfo.style.display = 'none';
+                transcribeBtn.disabled = true;
+                return;
+            }
+            
             selectedFile = file;
             
             // 显示文件信息
@@ -512,6 +543,7 @@
             transcribeBtn.disabled = false;
             
             hideMessages();
+            showSuccess('文件验证通过，可以开始转录！');
         }
 
         // 转录处理
