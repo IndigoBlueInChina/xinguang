@@ -140,14 +140,21 @@ async def index():
     static_dir = Path(__file__).parent / "static"
     index_file = static_dir / "index.html"
     
+    # 添加调试信息
+    logger.info(f"Index route called. Static dir: {static_dir}, exists: {static_dir.exists()}")
+    logger.info(f"Index file: {index_file}, exists: {index_file.exists()}")
+    
     if index_file.exists():
+        logger.info("Returning FileResponse for index.html")
         return FileResponse(index_file)
     else:
+        logger.info("Index.html not found, returning JSON response")
         return JSONResponse(
             content={
-                "message": "欢迎使用易和书院录音转文字服务",
+                "name": settings.app_name,
                 "version": settings.app_version,
-                "docs": "/docs"
+                "description": "基于AI的录音转文字服务",
+                "docs_url": "/docs"
             }
         )
 

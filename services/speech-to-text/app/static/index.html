@@ -585,12 +585,32 @@
                 result.style.display = 'block';
                 transcriptionResult = '';
 
-                // 发送文件并开始流式接收
+                // 创建一个Promise来处理上传进度和流式响应
+                let uploadCompleted = false;
+                
+                // 启动上传进度模拟（因为fetch API无法直接监控上传进度）
+                const uploadProgressInterval = setInterval(() => {
+                    if (!uploadCompleted) {
+                        // 模拟上传进度，但更加平滑
+                        const currentWidth = parseFloat(progressFill.style.width) || 0;
+                        if (currentWidth < 90) {
+                            const increment = Math.random() * 5 + 2; // 2-7%的增量
+                            updateUploadProgress(Math.min(currentWidth + increment, 90));
+                        }
+                    }
+                }, 200);
+
+                // 发送请求
                 const response = await fetch('/transcribe-stream', {
                     method: 'POST',
                     body: formData
                 });
 
+                // 上传完成
+                uploadCompleted = true;
+                clearInterval(uploadProgressInterval);
+                updateUploadProgress(100);
+                
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
@@ -683,19 +703,16 @@
             progressFill.style.width = '0%';
             const progressText = document.querySelector('.progress div');
             if (progressText) {
-                progressText.textContent = '正在上传文件...';
+                progressText.textContent = '正在上传文件... 0%';
             }
-            
-            // 模拟上传进度动画
-            let uploadProgress = 0;
-            const uploadInterval = setInterval(() => {
-                uploadProgress += Math.random() * 15;
-                if (uploadProgress >= 95) {
-                    uploadProgress = 95;
-                    clearInterval(uploadInterval);
-                }
-                progressFill.style.width = uploadProgress + '%';
-            }, 100);
+        }
+        
+        function updateUploadProgress(percent) {
+            const progressText = document.querySelector('.progress div');
+            progressFill.style.width = percent + '%';
+            if (progressText) {
+                progressText.textContent = `正在上传文件... ${Math.round(percent)}%`;
+            }
         }
 
         function showTranscriptionProgress() {
