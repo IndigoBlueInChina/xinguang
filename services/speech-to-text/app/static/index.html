@@ -575,7 +575,9 @@
                 isStreaming = true;
                 transcribeBtn.textContent = '⏹️ 停止转录';
                 transcribeBtn.disabled = false;
-                showStreamProgress();
+                
+                // 第一阶段：显示文件上传进度
+                showUploadProgress();
                 hideMessages();
                 
                 // 清空之前的结果
@@ -592,6 +594,9 @@
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
+
+                // 第二阶段：文件上传完成，开始转录
+                showTranscriptionProgress();
 
                 const reader = response.body.getReader();
                 const decoder = new TextDecoder();
@@ -641,7 +646,7 @@
                 // 更新进度文本
                 const progressText = document.querySelector('.progress div');
                 if (progressText) {
-                    progressText.textContent = `正在处理中... ${progressPercent}% (${data.chunk_index + 1}/${data.total_chunks})`;
+                    progressText.textContent = `正在转录... ${progressPercent}% (${data.chunk_index + 1}/${data.total_chunks})`;
                 }
             }
 
@@ -656,7 +661,7 @@
 
             // 如果是最后一块，显示完成信息
             if (data.is_final) {
-                showSuccess(`流式转录完成！总处理时间: ${data.processing_time?.toFixed(2) || 'N/A'} 秒`);
+                showSuccess(`转录完成！总处理时间: ${data.processing_time?.toFixed(2) || 'N/A'} 秒`);
                 stopStreamTranscription();
             }
         }
@@ -670,6 +675,35 @@
             if (eventSource) {
                 eventSource.close();
                 eventSource = null;
+            }
+        }
+
+        function showUploadProgress() {
+            progress.style.display = 'block';
+            progressFill.style.width = '0%';
+            const progressText = document.querySelector('.progress div');
+            if (progressText) {
+                progressText.textContent = '正在上传文件...';
+            }
+            
+            // 模拟上传进度动画
+            let uploadProgress = 0;
+            const uploadInterval = setInterval(() => {
+                uploadProgress += Math.random() * 15;
+                if (uploadProgress >= 95) {
+                    uploadProgress = 95;
+                    clearInterval(uploadInterval);
+                }
+                progressFill.style.width = uploadProgress + '%';
+            }, 100);
+        }
+
+        function showTranscriptionProgress() {
+            // 重置进度条为转录阶段
+            progressFill.style.width = '0%';
+            const progressText = document.querySelector('.progress div');
+            if (progressText) {
+                progressText.textContent = '正在转录... 0%';
             }
         }
 
