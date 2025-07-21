@@ -56,7 +56,7 @@ try {
     Write-Host "查看日志: docker-compose logs -f" -ForegroundColor White
     Write-Host "停止服务: docker-compose down" -ForegroundColor White
     Write-Host ""
-    Write-Host "如需启动Jitsi会议系统，请进入services/jitsi目录并配置.env文件" -ForegroundColor Yellow
+    
 }
 catch {
     Write-Host "✗ 服务启动失败: $($_.Exception.Message)" -ForegroundColor Red

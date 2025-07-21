@@ -3,7 +3,7 @@
 
 param(
     [Parameter(Mandatory=$false)]
-    [ValidateSet("all", "speech-to-text", "jitsi", "nginx")]
+    [ValidateSet("all", "speech-to-text", "nginx")]
     [string]$Service = "all",
     
     [Parameter(Mandatory=$false)]
@@ -88,9 +88,7 @@ function Build-Services {
         docker-compose build speech-to-text
     }
     
-    if ($ServiceName -eq "jitsi") {
-        Write-Host "Jitsi服务使用预构建镜像，无需构建" -ForegroundColor Yellow
-    }
+
 }
 
 # 启动服务
@@ -106,16 +104,7 @@ function Start-Services {
         "speech-to-text" {
             docker-compose up -d speech-to-text nginx
         }
-        "jitsi" {
-            Set-Location "services/jitsi"
-            if (Test-Path ".env") {
-                docker-compose up -d
-            } else {
-                Write-Host "⚠ Jitsi服务需要先配置.env文件" -ForegroundColor Yellow
-                Write-Host "请进入services/jitsi目录，复制.env.example为.env并配置" -ForegroundColor Yellow
-            }
-            Set-Location $ProjectRoot
-        }
+
         "nginx" {
             docker-compose up -d nginx
         }
@@ -131,17 +120,8 @@ function Stop-Services {
     switch ($ServiceName) {
         "all" {
             docker-compose down
-            Set-Location "services/jitsi"
-            if (Test-Path "docker-compose.yml") {
-                docker-compose down
-            }
-            Set-Location $ProjectRoot
         }
-        "jitsi" {
-            Set-Location "services/jitsi"
-            docker-compose down
-            Set-Location $ProjectRoot
-        }
+
         default {
             docker-compose stop $ServiceName
         }
@@ -162,15 +142,7 @@ function Get-ServicesStatus {
     Write-Host "=== 主服务状态 ===" -ForegroundColor Blue
     docker-compose ps
     
-    Write-Host ""
-    Write-Host "=== Jitsi服务状态 ===" -ForegroundColor Blue
-    Set-Location "services/jitsi"
-    if (Test-Path "docker-compose.yml") {
-        docker-compose ps
-    } else {
-        Write-Host "Jitsi服务未配置" -ForegroundColor Yellow
-    }
-    Set-Location $ProjectRoot
+
 }
 
 # 查看日志
@@ -187,15 +159,7 @@ function Get-ServicesLogs {
                 docker-compose logs --tail=50
             }
         }
-        "jitsi" {
-            Set-Location "services/jitsi"
-            if ($FollowLogs) {
-                docker-compose logs -f
-            } else {
-                docker-compose logs --tail=50
-            }
-            Set-Location $ProjectRoot
-        }
+
         default {
             if ($FollowLogs) {
                 docker-compose logs -f $ServiceName
@@ -230,7 +194,7 @@ try {
             Write-Host ""
             Write-Host "=== 服务访问地址 ===" -ForegroundColor Green
             Write-Host "语音转文字API: http://localhost/api/speech-to-text/docs" -ForegroundColor Cyan
-            Write-Host "Jitsi会议: http://localhost/jitsi/" -ForegroundColor Cyan
+
             Write-Host "健康检查: http://localhost/health" -ForegroundColor Cyan
         }
         "stop" {

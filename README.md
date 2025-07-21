@@ -9,10 +9,7 @@
 - 支持多种音频格式和语言识别
 - 提供RESTful API接口
 
-### 🎥 **Jitsi会议系统**
-- 开源视频会议解决方案
-- 支持多人音视频通话
-- 无需客户端，浏览器直接访问
+
 
 ### 🌐 **Nginx反向代理**
 - 统一入口，路由分发
@@ -39,10 +36,7 @@ yiheshuyuan/
 │   │   ├── Dockerfile          # 服务镜像
 │   │   ├── pyproject.toml      # Python依赖
 │   │   └── README.md           # 服务说明
-│   └── jitsi/                  # Jitsi会议系统
-│       ├── docker-compose.yml  # Jitsi服务编排
-│       ├── .env.example        # 环境配置示例
-│       └── README.md           # 服务说明
+
 ├── nginx/                      # Nginx反向代理
 │   ├── nginx.conf             # 主配置文件
 │   └── conf.d/                # 站点配置
@@ -81,24 +75,12 @@ docker-compose up -d speech-to-text nginx
 docker-compose ps
 ```
 
-### 3. 启动Jitsi会议系统（可选）
 
-```bash
-# 进入jitsi服务目录
-cd services/jitsi
-
-# 配置环境变量
-cp .env.example .env
-# 编辑.env文件，设置域名等配置
-
-# 启动jitsi服务
-docker-compose up -d
-```
 
 ### 4. 访问服务
 
 - 语音转文字API: http://localhost/api/speech-to-text/docs
-- Jitsi会议: http://localhost/jitsi/
+
 - 健康检查: http://localhost/health
 
 ## 服务使用说明
@@ -115,14 +97,13 @@ curl -X POST "http://localhost/api/speech-to-text/transcribe" \
 curl -X GET "http://localhost/api/speech-to-text/info"
 ```
 
-### Jitsi会议系统
 
-- 直接访问: http://localhost/jitsi/
-- 创建会议室: 在首页输入会议室名称
-- 邀请参与者: 分享会议室链接
 
 ### 健康检查
 
 ```bash
 curl -X GET "http://localhost/health"
 ```
+
+
+https://www.python.org/ftp/python/3.11.13/Python-3.11.13.tgz

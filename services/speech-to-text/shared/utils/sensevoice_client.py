@@ -68,6 +68,11 @@ class SenseVoiceClient:
             # 确保缓存目录存在
             self.cache_dir.mkdir(parents=True, exist_ok=True)
             
+            # 设置模型缓存目录
+            os.environ.setdefault("MODELSCOPE_CACHE", str(self.cache_dir))
+            os.environ.setdefault("HF_HOME", str(self.cache_dir))
+            os.environ.setdefault("TRANSFORMERS_CACHE", str(self.cache_dir))
+            
             # 初始化SenseVoice模型
             model_name = self.model_dir or "iic/SenseVoiceSmall"
             logger.info(f"正在加载SenseVoice模型: {model_name}")
@@ -77,7 +82,9 @@ class SenseVoiceClient:
                 trust_remote_code=True,
                 vad_model="fsmn-vad",
                 vad_kwargs={"max_single_segment_time": 30000},
-                device=self.device
+                device=self.device,
+                disable_update=True,  # 禁用自动更新检查
+                cache_dir=str(self.cache_dir)  # 明确指定缓存目录
             )
             
             logger.info(f"SenseVoice模型加载成功，设备: {self.device}")

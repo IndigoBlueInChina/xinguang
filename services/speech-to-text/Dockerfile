@@ -61,14 +61,18 @@ COPY --from=builder /app/shared ./shared
 # Set environment variables
 ENV PYTHONPATH="/app" \
     PATH="/app/.venv/bin:$PATH" \
-    PYTHONUNBUFFERED=1
+    PYTHONUNBUFFERED=1 \
+    MODELSCOPE_CACHE="/app/models" \
+    HF_HOME="/app/models" \
+    TRANSFORMERS_CACHE="/app/models"
 
 # 创建必要的目录
 RUN mkdir -p /app/uploads /app/logs /app/models
 
-# 创建非root用户
-RUN groupadd -r appuser && useradd -r -g appuser appuser
+# 创建非root用户和home目录
+RUN groupadd -r appuser && useradd -r -g appuser -m -d /home/appuser appuser
 RUN chown -R appuser:appuser /app
+RUN chown -R appuser:appuser /home/appuser
 USER appuser
 
 # 暴露端口

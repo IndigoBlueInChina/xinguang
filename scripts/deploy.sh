@@ -25,7 +25,7 @@ show_help() {
     echo "用法: $0 [选项]"
     echo ""
     echo "选项:"
-    echo "  -s, --service SERVICE    指定服务 (all|speech-to-text|jitsi|nginx) [默认: all]"
+    echo "  -s, --service SERVICE    指定服务 (all|speech-to-text|nginx) [默认: all]"
     echo "  -a, --action ACTION      指定操作 (start|stop|restart|status|logs|build) [默认: start]"
     echo "  -f, --follow            跟踪日志输出 (仅用于logs操作)"
     echo "  -h, --help              显示此帮助信息"
@@ -64,7 +64,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 # 验证参数
-if [[ ! "$SERVICE" =~ ^(all|speech-to-text|jitsi|nginx)$ ]]; then
+if [[ ! "$SERVICE" =~ ^(all|speech-to-text|nginx)$ ]]; then
     echo -e "${RED}错误: 无效的服务名称 '$SERVICE'${NC}"
     exit 1
 fi
@@ -154,9 +154,7 @@ build_services() {
         docker-compose build speech-to-text
     fi
     
-    if [[ "$service_name" == "jitsi" ]]; then
-        echo -e "${YELLOW}Jitsi服务使用预构建镜像，无需构建${NC}"
-    fi
+
 }
 
 # 启动服务
@@ -172,16 +170,7 @@ start_services() {
         "speech-to-text")
             docker-compose up -d speech-to-text nginx
             ;;
-        "jitsi")
-            cd "services/jitsi"
-            if [[ -f ".env" ]]; then
-                docker-compose up -d
-            else
-                echo -e "${YELLOW}⚠ Jitsi服务需要先配置.env文件${NC}"
-                echo -e "${YELLOW}请进入services/jitsi目录，复制.env.example为.env并配置${NC}"
-            fi
-            cd "$PROJECT_ROOT"
-            ;;
+
         "nginx")
             docker-compose up -d nginx
             ;;
@@ -197,17 +186,8 @@ stop_services() {
     case "$service_name" in
         "all")
             docker-compose down
-            cd "services/jitsi"
-            if [[ -f "docker-compose.yml" ]]; then
-                docker-compose down
-            fi
-            cd "$PROJECT_ROOT"
             ;;
-        "jitsi")
-            cd "services/jitsi"
-            docker-compose down
-            cd "$PROJECT_ROOT"
-            ;;
+
         *)
             docker-compose stop "$service_name"
             ;;
@@ -228,15 +208,7 @@ get_services_status() {
     echo -e "${BLUE}=== 主服务状态 ===${NC}"
     docker-compose ps
     
-    echo ""
-    echo -e "${BLUE}=== Jitsi服务状态 ===${NC}"
-    cd "services/jitsi"
-    if [[ -f "docker-compose.yml" ]]; then
-        docker-compose ps
-    else
-        echo -e "${YELLOW}Jitsi服务未配置${NC}"
-    fi
-    cd "$PROJECT_ROOT"
+
 }
 
 # 查看日志
@@ -252,15 +224,7 @@ get_services_logs() {
                 docker-compose logs --tail=50
             fi
             ;;
-        "jitsi")
-            cd "services/jitsi"
-            if [[ "$follow_logs" == "true" ]]; then
-                docker-compose logs -f
-            else
-                docker-compose logs --tail=50
-            fi
-            cd "$PROJECT_ROOT"
-            ;;
+
         *)
             if [[ "$follow_logs" == "true" ]]; then
                 docker-compose logs -f "$service_name"
@@ -295,7 +259,7 @@ main() {
             echo ""
             echo -e "${GREEN}=== 服务访问地址 ===${NC}"
             echo -e "${CYAN}语音转文字API: http://localhost/api/speech-to-text/docs${NC}"
-            echo -e "${CYAN}Jitsi会议: http://localhost/jitsi/${NC}"
+
             echo -e "${CYAN}健康检查: http://localhost/health${NC}"
             ;;
         "stop")
