@@ -421,6 +421,9 @@
             <div class="progress-bar">
                 <div class="progress-fill" id="progressFill"></div>
             </div>
+            <div class="timer-display" id="timerDisplay" style="text-align: center; margin-top: 10px; color: #666; font-size: 0.9em; display: none;">
+                ⏱️ 已用时间: <span id="timerValue">00:00</span>
+            </div>
         </div>
 
         <div class="error" id="error"></div>
@@ -459,9 +462,13 @@
         // 移除流式转录按钮引用
         const keywords = document.getElementById('keywords');
         const language = document.getElementById('language');
+        const timerDisplay = document.getElementById('timerDisplay');
+        const timerValue = document.getElementById('timerValue');
         
         let isStreaming = false;
         let eventSource = null;
+        let startTime = null;
+        let timerInterval = null;
 
         // 文件上传处理
         uploadArea.addEventListener('click', () => fileInput.click());
@@ -576,6 +583,9 @@
                 transcribeBtn.textContent = '⏹️ 停止转录';
                 transcribeBtn.disabled = false;
                 
+                // 开始计时
+                startTimer();
+                
                 // 第一阶段：显示文件上传进度
                 showUploadProgress();
                 hideMessages();
@@ -681,7 +691,9 @@
 
             // 如果是最后一块，显示完成信息
             if (data.is_final) {
-                showSuccess(`转录完成！总处理时间: ${data.processing_time?.toFixed(2) || 'N/A'} 秒`);
+                const clientTime = startTime ? ((Date.now() - startTime) / 1000).toFixed(2) : 'N/A';
+                const serverTime = data.processing_time?.toFixed(2) || 'N/A';
+                showSuccess(`转录完成！客户端总耗时: ${clientTime} 秒，服务器处理时间: ${serverTime} 秒`);
                 stopStreamTranscription();
             }
         }
@@ -690,6 +702,10 @@
             isStreaming = false;
             transcribeBtn.disabled = false;
             transcribeBtn.textContent = '🎯 开始转录';
+            
+            // 停止计时器
+            stopTimer();
+            
             hideProgress();
             
             if (eventSource) {
@@ -777,6 +793,9 @@
                 stopStreamTranscription();
             }
             
+            // 重置计时器
+            resetTimer();
+            
             selectedFile = null;
             transcriptionResult = null;
             fileInput.value = '';
@@ -785,6 +804,42 @@
             transcribeBtn.disabled = true;
             hideMessages();
         });
+
+        // 计时器函数
+        function startTimer() {
+            startTime = Date.now();
+            timerDisplay.style.display = 'block';
+            timerValue.textContent = '00:00';
+            
+            timerInterval = setInterval(() => {
+                if (startTime) {
+                    const elapsed = Date.now() - startTime;
+                    timerValue.textContent = formatTime(elapsed);
+                }
+            }, 1000);
+        }
+        
+        function stopTimer() {
+            if (timerInterval) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+            }
+            // 保持显示最终时间，不隐藏
+        }
+        
+        function resetTimer() {
+            stopTimer();
+            startTime = null;
+            timerDisplay.style.display = 'none';
+            timerValue.textContent = '00:00';
+        }
+        
+        function formatTime(milliseconds) {
+            const totalSeconds = Math.floor(milliseconds / 1000);
+            const minutes = Math.floor(totalSeconds / 60);
+            const seconds = totalSeconds % 60;
+            return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        }
 
         // 工具函数
         function showProgress() {
@@ -803,6 +858,7 @@
         function hideProgress() {
             progress.style.display = 'none';
             progressFill.style.width = '0%';
+            resetTimer(); // 隐藏进度条时重置计时器
         }
 
         function showError(message) {
