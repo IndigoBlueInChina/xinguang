@@ -73,11 +73,14 @@ RUN groupadd -r appuser && useradd -r -g appuser -m -d /home/appuser appuser
 RUN mkdir -p /app/uploads /app/logs /app/models && \
     chown -R appuser:appuser /app && \
     chown -R appuser:appuser /home/appuser && \
-    chmod -R 755 /app/models && \
-    chmod -R 755 /app/uploads && \
-    chmod -R 755 /app/logs
+    chmod -R 775 /app/models && \
+    chmod -R 775 /app/uploads && \
+    chmod -R 775 /app/logs
 
 USER appuser
+
+# 确保模型缓存目录存在并有正确权限
+RUN mkdir -p /app/models/models /app/models/hub /app/models/transformers
 
 # 暴露端口
 EXPOSE 8000
