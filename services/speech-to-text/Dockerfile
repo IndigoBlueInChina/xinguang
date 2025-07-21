@@ -69,18 +69,11 @@ ENV PYTHONPATH="/app" \
 # 创建非root用户和home目录
 RUN groupadd -r appuser && useradd -r -g appuser -m -d /home/appuser appuser
 
-# 创建必要的目录并设置权限
-RUN mkdir -p /app/uploads /app/logs /app/models && \
-    chown -R appuser:appuser /app && \
-    chown -R appuser:appuser /home/appuser && \
-    chmod -R 775 /app/models && \
-    chmod -R 775 /app/uploads && \
-    chmod -R 775 /app/logs
+# 设置应用目录权限（不创建挂载目录，由volume mount处理）
+RUN chown -R appuser:appuser /app && \
+    chown -R appuser:appuser /home/appuser
 
 USER appuser
-
-# 确保模型缓存目录存在并有正确权限
-RUN mkdir -p /app/models/models /app/models/hub /app/models/transformers
 
 # 暴露端口
 EXPOSE 8000
