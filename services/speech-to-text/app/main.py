@@ -14,7 +14,7 @@ from loguru import logger
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from shared.config import settings
-from shared.utils import FileManager, SenseVoiceClient
+from shared.utils import FileManager, SenseVoiceClient, setup_logger, get_access_logger
 from shared.models import (
     TranscriptionRequest,
     TranscriptionResponse,
@@ -35,6 +35,9 @@ app_start_time = time.time()
 async def lifespan(app: FastAPI):
     """应用生命周期管理"""
     global file_manager, sensevoice_client, scheduler
+    
+    # 初始化日志系统
+    setup_logger()
     
     # 启动时初始化
     logger.info("正在启动录音转文字服务...")
@@ -199,21 +202,37 @@ async def upload_audio(
     fm: FileManager = Depends(get_file_manager)
 ):
     """上传音频文件"""
+    access_logger = get_access_logger()
+    access_logger.info(f"文件上传请求 - 文件名: {file.filename}, 内容类型: {file.content_type}")
+    
     try:
+        # 记录文件基本信息
+        logger.info(f"开始处理文件上传 - 文件名: {file.filename}, 内容类型: {file.content_type}")
+        
         # 读取文件内容
         file_content = await file.read()
+        file_size = len(file_content)
+        logger.info(f"文件读取完成 - 大小: {file_size} 字节")
+        
+        # 检查文件大小
+        if file_size > fm.max_file_size:
+            error_msg = f"文件过大: {file_size} 字节，最大允许: {fm.max_file_size} 字节"
+            logger.warning(error_msg)
+            raise HTTPException(status_code=413, detail=error_msg)
         
         # 保存文件
         file_path = await fm.save_upload_file(file_content, file.filename)
         
         if file_path is None:
-            raise HTTPException(
-                status_code=400,
-                detail="文件上传失败，请检查文件格式和大小"
-            )
+            error_msg = "文件上传失败，请检查文件格式和大小"
+            logger.error(error_msg)
+            raise HTTPException(status_code=400, detail=error_msg)
         
         # 获取文件信息
         file_info = fm.get_file_info(file_path)
+        logger.info(f"文件上传成功 - 保存路径: {file_path}")
+        
+        access_logger.info(f"文件上传成功 - 文件ID: {file_path.name}, 大小: {file_size} 字节")
         
         return UploadResponse(
             success=True,
@@ -225,7 +244,9 @@ async def upload_audio(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"上传文件时发生错误: {str(e)}")
+        error_msg = f"上传文件时发生未知错误: {str(e)}"
+        logger.exception(error_msg)  # 使用exception记录完整的堆栈跟踪
+        access_logger.error(f"文件上传失败 - 文件名: {file.filename}, 错误: {str(e)}")
         raise HTTPException(status_code=500, detail=f"上传失败: {str(e)}")
 
 
@@ -239,42 +260,96 @@ async def transcribe_audio_stream(
     sv_client: SenseVoiceClient = Depends(get_sensevoice_client)
 ):
     """流式转录音频文件"""
+    access_logger = get_access_logger()
+    access_logger.info(f"流式转录请求 - 文件名: {file.filename}, 语言: {language}, 关键词: {keywords}")
+    
     file_path = None
     
     async def generate_stream():
         nonlocal file_path
         try:
+            # 记录请求信息
+            logger.info(f"开始流式转录 - 文件名: {file.filename}, 语言: {language}, 块时长: {chunk_duration}s")
+            
             # 读取并保存文件
             file_content = await file.read()
+            file_size = len(file_content)
+            logger.info(f"流式转录文件读取完成 - 大小: {file_size} 字节")
+            
+            # 检查文件大小
+            if file_size > fm.max_file_size:
+                error_msg = f"文件过大: {file_size} 字节，最大允许: {fm.max_file_size} 字节"
+                logger.warning(error_msg)
+                import json
+                error_result = {
+                    "success": False,
+                    "error": error_msg,
+                    "timestamp": int(time.time())
+                }
+                yield f"data: {json.dumps(error_result, ensure_ascii=False)}
+
+"
+                return
+            
             file_path = await fm.save_upload_file(file_content, file.filename)
             
             if file_path is None:
-                yield f"data: {{\"success\": false, \"error\": \"文件保存失败，请检查文件格式和大小\"}}\n\n"
+                error_msg = "文件保存失败，请检查文件格式和大小"
+                logger.error(error_msg)
+                import json
+                error_result = {
+                    "success": False,
+                    "error": error_msg,
+                    "timestamp": int(time.time())
+                }
+                yield f"data: {json.dumps(error_result, ensure_ascii=False)}
+
+"
                 return
             
+            logger.info(f"流式转录文件保存成功 - 路径: {file_path}")
+            
             # 流式转录音频
+            chunk_count = 0
             async for result in sv_client.transcribe_audio_stream(
                 file_path=file_path,
                 keywords=keywords,
                 language=language,
                 chunk_duration=chunk_duration
             ):
+                chunk_count += 1
+                logger.debug(f"流式转录块 {chunk_count} 完成")
                 import json
-                yield f"data: {json.dumps(result, ensure_ascii=False)}\n\n"
+                yield f"data: {json.dumps(result, ensure_ascii=False)}
+
+"
+            
+            logger.info(f"流式转录完成 - 总块数: {chunk_count}")
+            access_logger.info(f"流式转录成功 - 文件: {file.filename}, 块数: {chunk_count}")
                 
         except Exception as e:
+            error_msg = f"流式转录失败: {str(e)}"
+            logger.exception(error_msg)  # 记录完整的堆栈跟踪
+            access_logger.error(f"流式转录失败 - 文件: {file.filename}, 错误: {str(e)}")
+            
             import json
             error_result = {
                 "success": False,
-                "error": f"流式转录失败: {str(e)}",
+                "error": error_msg,
                 "timestamp": int(time.time())
             }
-            yield f"data: {json.dumps(error_result, ensure_ascii=False)}\n\n"
+            yield f"data: {json.dumps(error_result, ensure_ascii=False)}
+
+"
         
         finally:
             # 清理临时文件
             if file_path and file_path.exists():
-                fm.delete_file(file_path)
+                try:
+                    fm.delete_file(file_path)
+                    logger.info(f"临时文件已清理: {file_path}")
+                except Exception as e:
+                    logger.error(f"清理临时文件失败: {file_path}, 错误: {str(e)}")
     
     return StreamingResponse(
         generate_stream(),
