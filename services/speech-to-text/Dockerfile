@@ -66,15 +66,6 @@ ENV PYTHONPATH="/app" \
     HF_HOME="/app/models" \
     TRANSFORMERS_CACHE="/app/models"
 
-# 创建非root用户和home目录
-RUN groupadd -r appuser && useradd -r -g appuser -m -d /home/appuser appuser
-
-# 设置应用目录权限（不创建挂载目录，由volume mount处理）
-RUN chown -R appuser:appuser /app && \
-    chown -R appuser:appuser /home/appuser
-
-USER appuser
-
 # 暴露端口
 EXPOSE 8000
 
