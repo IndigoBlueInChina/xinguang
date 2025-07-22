@@ -4,8 +4,11 @@ import os
 import time
 import aiofiles
 from pathlib import Path
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 from loguru import logger
+
+if TYPE_CHECKING:
+    from fastapi import UploadFile
 
 
 class FileManager:
@@ -65,6 +68,71 @@ class FileManager:
             
         except Exception as e:
             logger.error(f"保存文件失败: {filename}, 错误: {str(e)}")
+            return None
+    
+    async def save_upload_file_stream(self, file: "UploadFile", filename: str) -> Optional[Path]:
+        """流式保存上传的文件"""
+        try:
+            # 检查文件扩展名
+            if not self.is_allowed_file(filename):
+                logger.warning(f"不允许的文件类型: {filename}")
+                return None
+            
+            # 生成唯一文件名
+            timestamp = int(time.time() * 1000)
+            safe_filename = f"{timestamp}_{filename}"
+            file_path = self.upload_dir / safe_filename
+            
+            logger.info(f"开始流式接收文件: {filename} -> {safe_filename}")
+            
+            # 流式保存文件
+            total_size = 0
+            chunk_count = 0
+            chunk_size = 8192  # 8KB chunks
+            last_log_size = 0
+            log_interval = 1024 * 1024  # 每1MB输出一次日志
+            
+            async with aiofiles.open(file_path, 'wb') as f:
+                while True:
+                    chunk = await file.read(chunk_size)
+                    if not chunk:
+                        logger.info(f"文件接收完成，共接收 {chunk_count} 个数据块")
+                        break
+                    
+                    chunk_count += 1
+                    total_size += len(chunk)
+                    
+                    # 检查文件大小限制
+                    if total_size > self.max_file_size:
+                        # 删除已写入的部分文件
+                        await f.close()
+                        if file_path.exists():
+                            file_path.unlink()
+                        logger.warning(f"文件大小超出限制: {filename}, 大小: {total_size} 字节")
+                        return None
+                    
+                    await f.write(chunk)
+                    
+                    # 定期输出进度日志
+                    if total_size - last_log_size >= log_interval:
+                        progress_mb = total_size / (1024 * 1024)
+                        logger.info(f"流式接收进度: {progress_mb:.1f}MB ({chunk_count} 块)")
+                        last_log_size = total_size
+            
+            final_size_mb = total_size / (1024 * 1024)
+            logger.info(f"流式文件保存成功: {file_path}")
+            logger.info(f"文件大小: {total_size} 字节 ({final_size_mb:.2f}MB), 共 {chunk_count} 个数据块")
+            return file_path
+            
+        except Exception as e:
+            logger.error(f"流式保存文件失败: {filename}, 错误: {str(e)}")
+            # 清理可能的部分文件
+            if 'file_path' in locals() and file_path.exists():
+                try:
+                    file_path.unlink()
+                    logger.info(f"已清理部分文件: {file_path}")
+                except:
+                    pass
             return None
     
     def delete_file(self, file_path: Path) -> bool:

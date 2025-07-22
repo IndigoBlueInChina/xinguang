@@ -207,21 +207,10 @@ async def upload_audio(
     
     try:
         # 记录文件基本信息
-        logger.info(f"开始处理文件上传 - 文件名: {file.filename}, 内容类型: {file.content_type}")
+        logger.info(f"开始流式处理文件上传 - 文件名: {file.filename}, 内容类型: {file.content_type}")
         
-        # 读取文件内容
-        file_content = await file.read()
-        file_size = len(file_content)
-        logger.info(f"文件读取完成 - 大小: {file_size} 字节")
-        
-        # 检查文件大小
-        if file_size > fm.max_file_size:
-            error_msg = f"文件过大: {file_size} 字节，最大允许: {fm.max_file_size} 字节"
-            logger.warning(error_msg)
-            raise HTTPException(status_code=413, detail=error_msg)
-        
-        # 保存文件
-        file_path = await fm.save_upload_file(file_content, file.filename)
+        # 流式保存文件
+        file_path = await fm.save_upload_file_stream(file, file.filename)
         
         if file_path is None:
             error_msg = "文件上传失败，请检查文件格式和大小"
@@ -230,9 +219,9 @@ async def upload_audio(
         
         # 获取文件信息
         file_info = fm.get_file_info(file_path)
-        logger.info(f"文件上传成功 - 保存路径: {file_path}")
+        logger.info(f"流式文件上传成功 - 保存路径: {file_path}")
         
-        access_logger.info(f"文件上传成功 - 文件ID: {file_path.name}, 大小: {file_size} 字节")
+        access_logger.info(f"文件上传成功 - 文件ID: {file_path.name}, 大小: {file_info.get('size', 0)} 字节")
         
         return UploadResponse(
             success=True,
@@ -271,25 +260,8 @@ async def transcribe_audio_stream(
             # 记录请求信息
             logger.info(f"开始流式转录 - 文件名: {file.filename}, 语言: {language}, 块时长: {chunk_duration}s")
             
-            # 读取并保存文件
-            file_content = await file.read()
-            file_size = len(file_content)
-            logger.info(f"流式转录文件读取完成 - 大小: {file_size} 字节")
-            
-            # 检查文件大小
-            if file_size > fm.max_file_size:
-                error_msg = f"文件过大: {file_size} 字节，最大允许: {fm.max_file_size} 字节"
-                logger.warning(error_msg)
-                import json
-                error_result = {
-                    "success": False,
-                    "error": error_msg,
-                    "timestamp": int(time.time())
-                }
-                yield f"data: {json.dumps(error_result, ensure_ascii=False)}\n\n"
-                return
-            
-            file_path = await fm.save_upload_file(file_content, file.filename)
+            # 流式保存文件
+            file_path = await fm.save_upload_file_stream(file, file.filename)
             
             if file_path is None:
                 error_msg = "文件保存失败，请检查文件格式和大小"
